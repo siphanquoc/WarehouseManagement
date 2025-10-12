@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: ${NAME}
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  devtools:
+    restart:
+      enabled: true
+    livereload:
+      enabled: true
+  # security:
+  #   user:
+  #     name: ${USERNAME_ADMIN}
+  #     password: ${PASSWORD_ADMIN}
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration: ${JWT_EXPIRATION}
+    refreshExpiration: ${JWT_REFRESH_EXPIRATION}
+server:
+  port: ${PORT}
+
+  #https://8080-idx-whs-1744682950261.cluster-a3grjzek65cxex762e4mwrzl46.cloudworkstations.dev/health
