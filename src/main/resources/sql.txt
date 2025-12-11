@@ -1,0 +1,224 @@
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+- ===================== ROLES =====================
+- Bảng vai trò người dùng, có hỗ trợ phân cấp vai trò.
+CREATE TABLE roles (
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),              -- ID vai trò, khóa chính, sử dụng UUID
+name VARCHAR(50) UNIQUE NOT NULL,                           -- Tên vai trò (vd: ROLE_ADMIN), duy nhất
+description TEXT,                                           -- Mô tả chi tiết vai trò
+parent_role_id UUID,                                        -- Vai trò cha, dùng để xây dựng phân cấp vai trò
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,             -- Ngày tạo vai trò
+created_by UUID,                                            -- Người tạo vai trò (liên kết với bảng users)
+last_modified_at TIMESTAMP,                                 -- Ngày cập nhật vai trò
+last_modified_by UUID,                                      -- Người cập nhật vai trò (liên kết với bảng users)
+deleted_at TIMESTAMP,                                       -- Ngày xóa mềm vai trò
+deleted_by UUID,                                            -- Người thực hiện xóa vai trò
+is_deleted BOOLEAN DEFAULT FALSE                            -- Trạng thái đã bị xóa mềm (True nếu đã xóa)
+);
+- ===================== USERS =====================
+- Bảng người dùng, lưu trữ thông tin người dùng trong hệ thống.
+CREATE TABLE users (
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),              -- ID người dùng, khóa chính, sử dụng UUID
+username VARCHAR(50) UNIQUE NOT NULL,                       -- Tên đăng nhập, duy nhất
+password VARCHAR(255) NOT NULL,                             -- Mật khẩu người dùng đã mã hóa
+first_name VARCHAR(50) NOT NULL,                            -- Tên người dùng
+last_name VARCHAR(50) NOT NULL,                             -- Họ người dùng
+name VARCHAR(101) GENERATED ALWAYS AS (first_name || ' ' || last_name) STORED, -- Họ tên đầy đủ (tự động tạo từ first_name và last_name)
+email VARCHAR(100) UNIQUE,                                  -- Email người dùng, duy nhất
+phone VARCHAR(100),  										-- Phone
+role_id UUID,                                               -- ID vai trò của người dùng (liên kết với bảng roles)
+is_active BOOLEAN DEFAULT TRUE,                             -- Trạng thái hoạt động (True nếu người dùng còn hoạt động)
+last_login TIMESTAMP,                                       -- Thời gian người dùng đăng nhập lần cuối
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,             -- Ngày tạo người dùng
+created_by UUID,                                            -- Người tạo tài khoản (liên kết với bảng users)
+last_modified_at TIMESTAMP,                                 -- Ngày cập nhật người dùng
+last_modified_by UUID,                                      -- Người cập nhật thông tin người dùng
+deleted_at TIMESTAMP,                                       -- Ngày xóa mềm tài khoản
+deleted_by UUID,                                            -- Người thực hiện xóa tài khoản
+is_deleted BOOLEAN DEFAULT FALSE                            -- Trạng thái đã bị xóa mềm (True nếu đã xóa)
+);
+- Khóa ngoại cho bảng users và roles
+ALTER TABLE users
+ADD CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES roles(id),
+ADD CONSTRAINT fk_users_created_by FOREIGN KEY (created_by) REFERENCES users(id),
+ADD CONSTRAINT fk_users_last_modified_by FOREIGN KEY (last_modified_by) REFERENCES users(id),
+ADD CONSTRAINT fk_users_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id);
+ALTER TABLE roles
+ADD CONSTRAINT fk_roles_parent FOREIGN KEY (parent_role_id) REFERENCES roles(id),
+ADD CONSTRAINT fk_roles_created_by FOREIGN KEY (created_by) REFERENCES users(id),
+ADD CONSTRAINT fk_roles_last_modified_by FOREIGN KEY (last_modified_by) REFERENCES users(id),
+ADD CONSTRAINT fk_roles_deleted_by FOREIGN KEY (deleted_by) REFERENCES users(id);
+- ===================== CATEGORIES =====================
+- Danh mục sản phẩm
+CREATE TABLE categories (
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),             -- ID danh mục, khóa chính
+name VARCHAR(100) NOT NULL,                                  -- Tên danh mục sản phẩm
+description TEXT,                                            -- Mô tả chi tiết về danh mục
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,              -- Ngày tạo danh mục
+created_by UUID REFERENCES users(id),                        -- Người tạo danh mục (liên kết với bảng users)
+last_modified_at TIMESTAMP,                                  -- Ngày cập nhật danh mục
+last_modified_by UUID REFERENCES users(id),                  -- Người cập nhật danh mục
+deleted_at TIMESTAMP,                                        -- Ngày xóa mềm danh mục
+deleted_by UUID REFERENCES users(id),                        -- Người xóa danh mục
+is_deleted BOOLEAN DEFAULT FALSE                              -- Trạng thái xóa mềm (True nếu danh mục đã bị xóa)
+);
+- ===================== SUPPLIERS =====================
+- Nhà cung cấp sản phẩm
+CREATE TABLE suppliers (
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),             -- ID nhà cung cấp, khóa chính
+name VARCHAR(100) NOT NULL,                                  -- Tên nhà cung cấp
+contact_name VARCHAR(100),                                   -- Tên người liên hệ với nhà cung cấp
+phone VARCHAR(20),                                           -- Số điện thoại của nhà cung cấp
+email VARCHAR(100),                                          -- Email nhà cung cấp
+address TEXT,                                                -- Địa chỉ của nhà cung cấp
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,              -- Ngày tạo nhà cung cấp
+created_by UUID REFERENCES users(id),                        -- Người tạo nhà cung cấp (liên kết với bảng users)
+last_modified_at TIMESTAMP,                                  -- Ngày cập nhật nhà cung cấp
+last_modified_by UUID REFERENCES users(id),                  -- Người cập nhật nhà cung cấp
+deleted_at TIMESTAMP,                                        -- Ngày xóa mềm nhà cung cấp
+deleted_by UUID REFERENCES users(id),                        -- Người xóa nhà cung cấp
+is_deleted BOOLEAN DEFAULT FALSE                              -- Trạng thái xóa mềm (True nếu nhà cung cấp đã bị xóa)
+);
+- ===================== PRODUCTS =====================
+- Sản phẩm trong kho
+CREATE TABLE products (
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),             -- ID sản phẩm, khóa chính
+name VARCHAR(100) NOT NULL,                                  -- Tên sản phẩm
+category_id UUID REFERENCES categories(id),                  -- ID danh mục (liên kết với bảng categories)
+supplier_id UUID REFERENCES suppliers(id),                   -- ID nhà cung cấp (liên kết với bảng suppliers)
+sku VARCHAR(50) UNIQUE,                                      -- Mã SKU sản phẩm
+unit VARCHAR(20),                                            -- Đơn vị tính sản phẩm
+price NUMERIC(12,2),                                          -- Giá sản phẩm
+barcode VARCHAR(100),                                        -- Mã vạch sản phẩm
+image_url TEXT,                                              -- Địa chỉ URL của ảnh sản phẩm
+reorder_level INTEGER DEFAULT 0,                             -- Mức cảnh báo tồn kho thấp
+is_active BOOLEAN DEFAULT TRUE,                               -- Trạng thái sản phẩm (True nếu sản phẩm còn hoạt động)
+description TEXT,                                            -- Mô tả chi tiết sản phẩm
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,              -- Ngày tạo sản phẩm
+created_by UUID REFERENCES users(id),                        -- Người tạo sản phẩm (liên kết với bảng users)
+last_modified_at TIMESTAMP,                                  -- Ngày cập nhật sản phẩm
+last_modified_by UUID REFERENCES users(id),                  -- Người cập nhật sản phẩm
+deleted_at TIMESTAMP,                                        -- Ngày xóa mềm sản phẩm
+deleted_by UUID REFERENCES users(id),                        -- Người xóa sản phẩm
+is_deleted BOOLEAN DEFAULT FALSE                              -- Trạng thái xóa mềm (True nếu sản phẩm đã bị xóa)
+);
+- ===================== PRODUCT SUPPLIERS =====================
+- Mối quan hệ nhiều-nhiều giữa sản phẩm và nhà cung cấp
+CREATE TABLE product_suppliers (
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+product_id UUID REFERENCES products(id) ON DELETE CASCADE,   -- ID sản phẩm
+supplier_id UUID REFERENCES suppliers(id) ON DELETE CASCADE, -- ID nhà cung cấp
+purchase_price NUMERIC(12,2),                                -- Giá mua từ nhà cung cấp
+lead_time_days INTEGER,                                      -- Số ngày giao hàng dự kiến
+notes TEXT,                                                  -- Ghi chú về mối quan hệ
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,              -- Ngày tạo quan hệ
+created_by UUID REFERENCES users(id),                        -- Người tạo quan hệ
+last_modified_at TIMESTAMP,                                  -- Ngày cập nhật quan hệ
+last_modified_by UUID REFERENCES users(id),                  -- Người cập nhật quan hệ
+deleted_at TIMESTAMP,                                        -- Ngày xóa mềm quan hệ
+deleted_by UUID REFERENCES users(id),                        -- Người xóa quan hệ
+is_deleted BOOLEAN DEFAULT FALSE                             -- Trạng thái xóa mềm (True nếu đã xóa)
+);
+- ===================== WAREHOUSES =====================
+- Bảng kho hàng
+CREATE TABLE warehouses (
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),             -- ID kho, khóa chính
+name VARCHAR(100) NOT NULL,                                  -- Tên kho hàng
+location TEXT,                                               -- Vị trí kho
+manager_id UUID REFERENCES users(id),                        -- Người quản lý kho (liên kết với bảng users)
+capacity INTEGER,                                            -- Dung lượng kho
+is_active BOOLEAN DEFAULT TRUE,                               -- Trạng thái kho (True nếu kho còn hoạt động)
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,              -- Ngày tạo kho
+created_by UUID REFERENCES users(id),                        -- Người tạo kho (liên kết với bảng users)
+last_modified_at TIMESTAMP,                                  -- Ngày cập nhật kho
+last_modified_by UUID REFERENCES users(id),                  -- Người cập nhật kho
+deleted_at TIMESTAMP,                                        -- Ngày xóa mềm kho
+deleted_by UUID REFERENCES users(id),                        -- Người xóa kho
+is_deleted BOOLEAN DEFAULT FALSE                              -- Trạng thái xóa mềm (True nếu kho đã bị xóa)
+);
+- ===================== CONTRACTS =====================
+- Hợp đồng giữa công ty và nhà cung cấp
+CREATE TABLE contracts (
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),             -- ID hợp đồng
+contract_number VARCHAR(50) UNIQUE NOT NULL,                 -- Mã hợp đồng, duy nhất
+supplier_id UUID REFERENCES suppliers(id),                   -- ID nhà cung cấp (liên kết với bảng suppliers)
+start_date DATE,                                             -- Ngày bắt đầu hợp đồng
+end_date DATE,                                               -- Ngày kết thúc hợp đồng
+terms TEXT,                                                  -- Điều khoản hợp đồng
+status VARCHAR(20) DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'EXPIRED', 'CANCELLED')), -- Trạng thái hợp đồng
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,              -- Ngày tạo hợp đồng
+created_by UUID REFERENCES users(id),                        -- Người tạo hợp đồng (liên kết với bảng users)
+last_modified_at TIMESTAMP,                                  -- Ngày cập nhật hợp đồng
+last_modified_by UUID REFERENCES users(id),                  -- Người cập nhật hợp đồng
+deleted_at TIMESTAMP,                                        -- Ngày xóa mềm hợp đồng
+deleted_by UUID REFERENCES users(id),                        -- Người xóa hợp đồng
+is_deleted BOOLEAN DEFAULT FALSE                              -- Trạng thái xóa mềm (True nếu hợp đồng đã bị xóa)
+);
+- ===================== CONTRACT PRODUCTS =====================
+- Sản phẩm trong hợp đồng
+CREATE TABLE contract_products (
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),             -- ID bản ghi sản phẩm trong hợp đồng
+contract_id UUID REFERENCES contracts(id),                   -- ID hợp đồng (liên kết với bảng contracts)
+product_id UUID REFERENCES products(id),                     -- ID sản phẩm (liên kết với bảng products)
+quantity INTEGER,                                            -- Số lượng sản phẩm trong hợp đồng
+unit_price NUMERIC(12,2),                                     -- Đơn giá sản phẩm trong hợp đồng
+discount NUMERIC(5,2),                                        -- Giảm giá cho sản phẩm trong hợp đồng
+notes TEXT,                                                   -- Ghi chú thêm về sản phẩm trong hợp đồng
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,              -- Ngày tạo quan hệ
+created_by UUID REFERENCES users(id),                        -- Người tạo quan hệ
+last_modified_at TIMESTAMP,                                  -- Ngày cập nhật quan hệ
+last_modified_by UUID REFERENCES users(id),                  -- Người cập nhật quan hệ
+deleted_at TIMESTAMP,                                        -- Ngày xóa mềm quan hệ
+deleted_by UUID REFERENCES users(id),                        -- Người xóa quan hệ
+is_deleted BOOLEAN DEFAULT FALSE
+);
+- ===================== TRANSACTIONS =====================
+- Giao dịch nhập và xuất hàng (gộp IN và OUT)
+CREATE TABLE transactions (
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),             -- ID giao dịch
+transaction_type VARCHAR(10) CHECK (transaction_type IN ('IN', 'OUT')), -- Loại giao dịch (IN - nhập, OUT - xuất)
+warehouse_id UUID REFERENCES warehouses(id),                 -- ID kho thực hiện giao dịch (liên kết với bảng warehouses)
+user_id UUID REFERENCES users(id),                           -- Người thực hiện giao dịch (liên kết với bảng users)
+transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,         -- Thời gian giao dịch
+reference_number VARCHAR(50),                                 -- Mã tham chiếu giao dịch
+status VARCHAR(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')), -- Trạng thái giao dịch
+approved_by UUID REFERENCES users(id),                       -- Người duyệt giao dịch (nếu có)
+approved_at TIMESTAMP,                                       -- Thời gian duyệt giao dịch
+note TEXT,                                                   -- Ghi chú về giao dịch
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,              -- Ngày tạo giao dịch
+created_by UUID REFERENCES users(id),                        -- Người tạo giao dịch
+last_modified_at TIMESTAMP,                                  -- Ngày cập nhật giao dịch
+last_modified_by UUID REFERENCES users(id),                  -- Người cập nhật giao dịch
+deleted_at TIMESTAMP,                                        -- Ngày xóa mềm giao dịch
+deleted_by UUID REFERENCES users(id),                        -- Người xóa giao dịch
+is_deleted BOOLEAN DEFAULT FALSE                              -- Trạng thái xóa mềm (True nếu giao dịch đã bị xóa)
+);
+- ===================== TRANSACTION DETAILS =====================
+- Chi tiết sản phẩm trong giao dịch (liên kết với sản phẩm và giao dịch)
+CREATE TABLE transaction_details (
+id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),             -- ID chi tiết giao dịch
+transaction_id UUID REFERENCES transactions(id),             -- ID giao dịch (liên kết với bảng transactions)
+product_id UUID REFERENCES products(id),                     -- ID sản phẩm (liên kết với bảng products)
+quantity INTEGER NOT NULL,                                    -- Số lượng sản phẩm trong giao dịch
+unit_price NUMERIC(12,2),                                     -- Đơn giá sản phẩm trong giao dịch
+total_price NUMERIC(12,2),                                     -- Tổng giá trị sản phẩm trong giao dịch
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,              -- Ngày tạo quan hệ
+created_by UUID REFERENCES users(id),                        -- Người tạo quan hệ
+last_modified_at TIMESTAMP,                                  -- Ngày cập nhật quan hệ
+last_modified_by UUID REFERENCES users(id),                  -- Người cập nhật quan hệ
+deleted_at TIMESTAMP,                                        -- Ngày xóa mềm quan hệ
+deleted_by UUID REFERENCES users(id),                        -- Người xóa quan hệ
+is_deleted BOOLEAN DEFAULT FALSE
+);
+
+
+
+INSERT INTO roles (name, description, created_by)
+VALUES ('ROLE_ADMIN', 'Administrator role with full access', NULL);
+
+-- Insert User Role
+INSERT INTO roles (name, description, created_by)
+VALUES ('ROLE_USER', 'Regular user role with limited access', NULL);
+
+
+INSERT INTO users (username, password, first_name, last_name, email, role_id, created_by)
+VALUES ('siphan', '123', 'Si', 'Phn', 'admin@example.com', 'd2362688-4af4-4234-b451-d5bab6ace0cb', NULL);

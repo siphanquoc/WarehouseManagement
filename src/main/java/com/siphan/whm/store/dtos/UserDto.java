@@ -11,16 +11,16 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 @EqualsAndHashCode
-
 public class UserDto {
     private String id;
     private String username;
     private String password;
-    private String email;
-    private String phoneNumber;
     private String firstName;
     private String lastName;
-    private String address;
-    private Boolean isActive = true;
-    private RoleDto roleDto;
+    private String name;
+    private String email;
+    private String phone;
+    private String roleId;
+    private Boolean isActive;
+    private Instant lastLogin;
 }

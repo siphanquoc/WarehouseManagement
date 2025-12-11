@@ -1,5 +1,12 @@
 package com.siphan.whm.store.postgres.entity;
 
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.Instant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -26,6 +33,7 @@ import java.util.stream.StreamSupport;
 @AllArgsConstructor
 @NoArgsConstructor
 @EqualsAndHashCode
+@EntityListeners(AuditingEntityListener.class)
 public class RoleEntity {
     @Id
     @Column(name = "id")
@@ -37,9 +45,27 @@ public class RoleEntity {
     @Column(name = "description")
     private String description;
 
-    @ManyToOne
-    @JoinColumn(name = "parent_role_id")
-    private RoleEntity parentRole;
+    @Column(name = "is_active")
+    private Boolean isActive;
+
+    @Column(name = "parent_role_id")
+    private String parentRoleId;
+
+    @CreatedDate
+    @Column(name = "created_date", updatable = false)
+    private Instant createdDate;
+
+    @LastModifiedDate
+    @Column(name = "last_modified_date")
+    private Instant lastModifiedDate;
+
+    @CreatedBy
+    @Column(name = "created_by", updatable = false)
+    private Long createdBy;
+
+    @LastModifiedBy
+    @Column(name = "last_modified_by")
+    private Long lastModifiedBy;
 
     public RoleEntity(RoleDto dto) {
         BeanUtils.copyProperties(dto, this);
